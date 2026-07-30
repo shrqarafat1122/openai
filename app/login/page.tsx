@@ -31,15 +31,27 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      // Read the body as text first so a non-JSON error page (proxy, crash,
+      // wrong origin) surfaces its real status instead of a blank parse fail.
+      const raw = await res.text();
+      let data: { ok?: boolean; error?: string; user?: unknown } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        setError(`Unexpected response (${res.status}). Is the app open on the same host/port as the dev server?`);
+        return;
+      }
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        setError(data.error || `Login failed (${res.status})`);
         return;
       }
       router.replace(next);
       router.refresh();
-    } catch {
-      setError("Network error");
+    } catch (err) {
+      // fetch() only rejects when the request never completed: server down,
+      // wrong port/origin, offline, or a blocking browser extension.
+      const detail = err instanceof Error ? err.message : "request failed";
+      setError(`Can't reach the server (${detail}). Check the app is running and you're on the right URL.`);
     } finally {
       setLoading(false);
     }
@@ -63,7 +75,7 @@ function LoginForm() {
 
         <div className="grid gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-450 text-zinc-400">Email Address</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Email Address</label>
             <input
               type="email"
               value={email}
@@ -76,7 +88,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-405 text-zinc-400">Password</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Password</label>
             <input
               type="password"
               value={password}
@@ -89,7 +101,7 @@ function LoginForm() {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-500/10 bg-red-950/20 px-3.5 py-2 text-xs text-red-350 text-red-305">
+            <p className="rounded-lg border border-red-500/10 bg-red-950/20 px-3.5 py-2 text-xs text-red-300">
               {error}
             </p>
           )}
