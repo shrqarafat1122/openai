@@ -87,6 +87,11 @@ export async function PATCH(
 
     await docRef.update(updateData);
 
+    // Invalidate model cache so changes take effect immediately
+    try {
+      await db().collection("model_caches").doc(id).delete();
+    } catch {}
+
     // Get final keys array to return masked representation
     const mergedKeys = updateData.apiKeys || dbData?.apiKeys || [];
     const maskedKeys = mergedKeys.map((k: string) => {

@@ -42,6 +42,11 @@ export function ChatWindow() {
     if (!model || streaming) return;
     setError(null);
 
+    if (model.includes("CONFIG_REQUIRED") || model.includes("FETCH_ERROR")) {
+      setError("The selected provider needs manual model IDs or is unreachable. Configure it in Settings -> Linked providers.");
+      return;
+    }
+
     const next: ChatMessage[] = [...messages, { role: "user", content: text }];
     // Append the user's turn plus an empty assistant turn we'll stream into.
     setMessages([...next, { role: "assistant", content: "" }]);

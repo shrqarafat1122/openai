@@ -54,7 +54,7 @@ export default function ProvidersPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!displayName.trim()) return setError("Display name is required.");
-    if (apiKeys.length === 0) return setError("At least one API key is required.");
+    if (providerType !== "custom" && apiKeys.length === 0) return setError("At least one API key is required.");
     if (providerType === "custom" && !baseUrl.trim()) return setError("Base URL is required for custom providers.");
 
     setSubmitting(true);

@@ -68,7 +68,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Display name is required" }, { status: 400 });
     }
 
-    if (!Array.isArray(apiKeys) || apiKeys.length === 0 || apiKeys.some((k) => !k.trim())) {
+    const rawKeys = Array.isArray(apiKeys) ? apiKeys.map((k) => String(k).trim()).filter(Boolean) : [];
+    if (providerType !== "custom" && rawKeys.length === 0) {
       return NextResponse.json({ error: "At least one valid API key is required" }, { status: 400 });
     }
 
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
     }
 
     const cleanBaseUrl = baseUrl ? baseUrl.trim() : "";
-    const cleanKeys = apiKeys.map((k) => k.trim());
+    const cleanKeys = rawKeys.length > 0 ? rawKeys : ["not-needed"];
     const cleanManualModels = Array.isArray(manualModels)
       ? manualModels.map((m: unknown) => String(m).trim()).filter(Boolean)
       : [];
@@ -96,6 +97,11 @@ export async function POST(req: Request) {
     };
 
     const docRef = await db().collection(COLLECTION).add(docData);
+
+    // Invalidate model cache for immediate update
+    try {
+      await db().collection("model_caches").doc(docRef.id).delete();
+    } catch {}
 
     return NextResponse.json(
       {

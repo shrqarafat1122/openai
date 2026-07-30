@@ -79,11 +79,15 @@ export async function GET() {
             }));
           } else {
             const baseUrl = (provider.baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+            const fetchHeaders: Record<string, string> = {
+              ...(provider.apiHeaders || {}),
+            };
+            if (provider.apiKeys && provider.apiKeys.length > 0 && provider.apiKeys[0] && provider.apiKeys[0] !== "not-needed") {
+              fetchHeaders["Authorization"] = `Bearer ${provider.apiKeys[0]}`;
+            }
+
             const res = await fetch(`${baseUrl}/models`, {
-              headers: {
-                Authorization: `Bearer ${provider.apiKeys[0]}`,
-                ...(provider.apiHeaders || {}),
-              },
+              headers: fetchHeaders,
               signal: AbortSignal.timeout(6000),
             });
 

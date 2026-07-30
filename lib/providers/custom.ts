@@ -6,13 +6,18 @@ export const customProvider: Provider = {
   id: "custom",
 
   async chat(params: ChatParams) {
-    const keys = params.apiKeys || [];
+    const keys = params.apiKeys && params.apiKeys.length > 0 ? params.apiKeys : ["not-needed"];
     const baseURL = params.baseUrl;
     if (!baseURL) throw new Error("Base URL is required for custom providers.");
 
     return withKeyRotation(
       keys,
-      (key) => new OpenAI({ apiKey: key, baseURL }),
+      (key) =>
+        new OpenAI({
+          apiKey: key,
+          baseURL,
+          defaultHeaders: params.apiHeaders,
+        }),
       (client) =>
         client.chat.completions.create({
           model: params.model,
@@ -26,13 +31,18 @@ export const customProvider: Provider = {
   },
 
   async *chatStream(params: ChatParams) {
-    const keys = params.apiKeys || [];
+    const keys = params.apiKeys && params.apiKeys.length > 0 ? params.apiKeys : ["not-needed"];
     const baseURL = params.baseUrl;
     if (!baseURL) throw new Error("Base URL is required for custom providers.");
 
     const stream = await withKeyRotation(
       keys,
-      (key) => new OpenAI({ apiKey: key, baseURL }),
+      (key) =>
+        new OpenAI({
+          apiKey: key,
+          baseURL,
+          defaultHeaders: params.apiHeaders,
+        }),
       (client) =>
         client.chat.completions.create({
           model: params.model,
