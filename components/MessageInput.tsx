@@ -21,7 +21,7 @@ export function MessageInput({
   }
 
   return (
-    <div className="border-t border-border bg-bg p-4">
+    <div className="border-t border-zinc-800/40 bg-zinc-950/20 backdrop-blur-md p-4">
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <textarea
           ref={taRef}
@@ -39,12 +39,12 @@ export function MessageInput({
               submit();
             }
           }}
-          className="max-h-52 flex-1 resize-none rounded-xl border border-border bg-surface px-4 py-2.5 text-sm outline-none focus:border-accent"
+          className="max-h-52 flex-1 resize-none rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-650 outline-none focus:border-violet-500/80 transition-all font-sans"
         />
         <button
           onClick={submit}
           disabled={disabled || !text.trim()}
-          className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-650 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40 transition-all shadow-glow-purple select-none hover:opacity-95"
         >
           Send
         </button>

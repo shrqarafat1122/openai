@@ -1,9 +1,12 @@
 import type { Config } from "tailwindcss";
+import { join } from "path";
 
+// Absolute globs (anchored to this config's folder) so Tailwind scans the right
+// files even when the dev server is launched from a parent directory.
 export default {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    join(__dirname, "app/**/*.{js,ts,jsx,tsx,mdx}"),
+    join(__dirname, "components/**/*.{js,ts,jsx,tsx,mdx}"),
   ],
   theme: {
     extend: {

@@ -14,6 +14,9 @@ export interface ChatParams {
   top_p?: number;
   max_tokens?: number;
   stream?: boolean;
+  apiKeys?: string[];
+  baseUrl?: string;
+  apiHeaders?: Record<string, string>;
 }
 
 export interface ModelInfo {

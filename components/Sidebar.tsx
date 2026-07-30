@@ -35,10 +35,16 @@ export function Sidebar({
 
       <div className="border-t border-border p-3 text-xs text-gray-400">
         <Link
-          href="/settings/keys"
+          href="/settings/providers"
           className="block rounded-lg px-2 py-2 hover:bg-bg hover:text-gray-100"
         >
-          API keys
+          Linked providers
+        </Link>
+        <Link
+          href="/settings/keys"
+          className="mt-1 block rounded-lg px-2 py-2 hover:bg-bg hover:text-gray-100"
+        >
+          Gateway keys
         </Link>
         <button
           onClick={logout}

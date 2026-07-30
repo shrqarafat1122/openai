@@ -10,10 +10,12 @@
     "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "bcryptjs": "^2.4.3",
     "eslint-config-next": "^15.5.22",
     "firebase-admin": "^12.7.0",
     "jose": "^5.9.6",
+    "lucide-react": "^1.28.0",
     "next": "^15.5.22",
     "openai": "^4.77.0",
     "react": "^19.0.0",

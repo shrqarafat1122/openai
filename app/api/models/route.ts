@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { defaultProvider } from "@/lib/providers/registry";
+import { db } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
-// Internal model list for the app UI. Session-cookie authenticated (the
-// bearer-authenticated mirror for external tools lives at /v1/models).
+const CACHE_TTL = 15 * 60 * 1000;
+
+interface ProviderRecord {
+  id: string;
+  providerType: "openai" | "anthropic" | "custom";
+  displayName: string;
+  baseUrl: string;
+  apiKeys: string[];
+  apiHeaders?: Record<string, string>;
+  enabled: boolean;
+  ownerUid: string;
+}
 
 export async function GET() {
   const session = await getSession();
@@ -14,14 +24,95 @@ export async function GET() {
   }
 
   try {
-    const models = await defaultProvider.listModels();
-    // Chat-capable models only, newest-looking first, to keep the picker tidy.
-    const chatModels = models
-      .filter((m) => m.id.startsWith("gpt-") || m.id.startsWith("o1") || m.id.startsWith("o3"))
+    const snap = await db()
+      .collection("providers")
+      .where("ownerUid", "==", session.uid)
+      .where("enabled", "==", true)
+      .get();
+
+    const activeProviders = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<ProviderRecord, "id">),
+    }));
+
+    if (activeProviders.length === 0) {
+      // Default fallback list
+      const FallbackModels = [
+        { id: "gpt-4o-mini", object: "model", created: Date.now(), owned_by: "openai" },
+        { id: "gpt-4o", object: "model", created: Date.now(), owned_by: "openai" },
+        { id: "o1-mini", object: "model", created: Date.now(), owned_by: "openai" },
+      ];
+      if (process.env.ANTHROPIC_API_KEY) {
+        FallbackModels.push(
+          { id: "claude-3-5-sonnet-20241022", object: "model", created: Date.now(), owned_by: "anthropic" },
+          { id: "claude-3-5-haiku-20241022", object: "model", created: Date.now(), owned_by: "anthropic" }
+        );
+      }
+      return NextResponse.json({ models: FallbackModels });
+    }
+
+    const allModelsPromises = activeProviders.map(async (provider) => {
+      const cacheRef = db().collection("model_caches").doc(provider.id);
+      const cacheSnap = await cacheRef.get();
+
+      let models: any[] = [];
+      const cacheData = cacheSnap.data();
+
+      if (cacheSnap.exists && Date.now() - (cacheData?.fetchedAt ?? 0) < CACHE_TTL) {
+        models = cacheData?.models || [];
+      } else {
+        try {
+          if (provider.providerType === "anthropic") {
+            models = [
+              { id: "claude-3-5-sonnet-20241022", owned_by: "anthropic" },
+              { id: "claude-3-5-haiku-20241022", owned_by: "anthropic" },
+              { id: "claude-3-opus-20240229", owned_by: "anthropic" },
+            ];
+          } else {
+            const baseUrl = provider.baseUrl || "https://api.openai.com/v1";
+            const res = await fetch(`${baseUrl}/models`, {
+              headers: {
+                Authorization: `Bearer ${provider.apiKeys[0]}`,
+                ...(provider.apiHeaders || {}),
+              },
+              signal: AbortSignal.timeout(6000),
+            });
+
+            if (res.ok) {
+              const body = await res.json();
+              models = body.data || [];
+            } else {
+              throw new Error(`Upstream status: ${res.status}`);
+            }
+          }
+
+          await cacheRef.set({
+            models,
+            fetchedAt: Date.now(),
+          });
+        } catch (err) {
+          console.warn(`Failed to fetch models for group: ${provider.displayName}`, err);
+          models = cacheData?.models || [];
+        }
+      }
+
+      return models.map((m: any) => ({
+        id: `${provider.id}/${m.id}`,
+        object: "model",
+        created: m.created || Date.now(),
+        owned_by: m.owned_by || provider.providerType,
+        providerName: provider.displayName, // Extra helper for grouping picker in UI
+      }));
+    });
+
+    const settledOutputs = await Promise.allSettled(allModelsPromises);
+    const unifiedList = settledOutputs
+      .filter((res): res is PromiseFulfilledResult<any[]> => res.status === "fulfilled")
+      .flatMap((res) => res.value)
       .sort((a, b) => a.id.localeCompare(b.id));
-    return NextResponse.json({ models: chatModels.length ? chatModels : models });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Upstream error";
-    return NextResponse.json({ error: message }, { status: 502 });
+
+    return NextResponse.json({ models: unifiedList });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Failed to load models list." }, { status: 502 });
   }
 }

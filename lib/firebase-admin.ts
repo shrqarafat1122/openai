@@ -38,5 +38,11 @@ export function getAdminApp(): App {
 }
 
 export function db(): Firestore {
-  return getFirestore(getAdminApp());
+  // Admin SDK talks to the "(default)" database unless a specific database id
+  // is provided. If you named your Firestore database something else, set
+  // FIREBASE_DATABASE_ID in .env to that name.
+  const databaseId = process.env.FIREBASE_DATABASE_ID?.trim();
+  return databaseId
+    ? getFirestore(getAdminApp(), databaseId)
+    : getFirestore(getAdminApp());
 }

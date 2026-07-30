@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { providerForModel } from "@/lib/providers/registry";
+import { resolveGatewayRoute } from "@/lib/providers/registry";
 import type { ChatParams } from "@/lib/providers/types";
 
 export const runtime = "nodejs";
@@ -37,32 +37,43 @@ export async function POST(req: Request) {
     stream: true,
   };
 
-  const provider = providerForModel(params.model);
-  const encoder = new TextEncoder();
+  try {
+    const routeDetails = await resolveGatewayRoute(params.model);
+    params.model = routeDetails.upstreamModel;
+    params.apiKeys = routeDetails.apiKeys;
+    params.baseUrl = routeDetails.baseUrl;
+    params.apiHeaders = routeDetails.apiHeaders;
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        for await (const chunk of provider.chatStream(params)) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+    const provider = routeDetails.provider;
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const chunk of provider.chatStream(params)) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Upstream stream error";
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: { message } })}\n\n`)
+          );
+        } finally {
+          controller.close();
         }
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Upstream stream error";
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: { message } })}\n\n`)
-        );
-      } finally {
-        controller.close();
-      }
-    },
-  });
+      },
+    });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Routing or provider instantiation error";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }

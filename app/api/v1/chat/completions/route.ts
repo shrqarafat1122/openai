@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bearerFromHeader, verifyApiKey } from "@/lib/apiKeys";
-import { providerForModel } from "@/lib/providers/registry";
+import { resolveGatewayRoute } from "@/lib/providers/registry";
 import type { ChatParams } from "@/lib/providers/types";
 
 export const runtime = "nodejs";
@@ -47,9 +47,15 @@ export async function POST(req: Request) {
     stream: !!body.stream,
   };
 
-  const provider = providerForModel(params.model);
-
   try {
+    const routeDetails = await resolveGatewayRoute(params.model);
+    params.model = routeDetails.upstreamModel;
+    params.apiKeys = routeDetails.apiKeys;
+    params.baseUrl = routeDetails.baseUrl;
+    params.apiHeaders = routeDetails.apiHeaders;
+
+    const provider = routeDetails.provider;
+
     if (params.stream) {
       const iterator = provider.chatStream(params);
       const encoder = new TextEncoder();
