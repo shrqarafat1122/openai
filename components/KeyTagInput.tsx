@@ -59,20 +59,20 @@ export function KeyTagInput({ value, onChange, placeholder = "Add key..." }: Key
   };
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-bg p-2 focus-within:border-accent">
+    <div className="flex flex-wrap gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-2.5 backdrop-blur-sm focus-within:border-violet-500 focus-within:shadow-glow-purple transition-all">
       {value.map((key, i) => (
         <span
           key={i}
-          className="flex items-center gap-1.5 rounded-md bg-zinc-800/80 px-2 py-1 text-xs font-mono text-gray-200 transition-all hover:bg-zinc-700"
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-900/60 border border-zinc-800 px-2.5 py-1.5 text-xs font-mono text-zinc-200 transition-all hover:bg-zinc-800/50 hover:border-violet-500/30"
           onMouseEnter={() => setHoveredIndex(i)}
           onMouseLeave={() => setHoveredIndex(null)}
         >
-          <Key className="h-3 w-3 text-gray-400" />
+          <Key className="h-3 w-3 text-violet-400" />
           <span>{maskKey(key, i)}</span>
           <button
             type="button"
             onClick={() => removeTag(i)}
-            className="text-gray-400 hover:text-red-400"
+            className="text-zinc-500 hover:text-red-400 transition-colors"
           >
             <X className="h-3 w-3" />
           </button>
@@ -84,7 +84,7 @@ export function KeyTagInput({ value, onChange, placeholder = "Add key..." }: Key
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         placeholder={value.length === 0 ? placeholder : ""}
-        className="flex-1 min-w-[150px] bg-transparent text-sm text-gray-200 outline-none placeholder:text-gray-500"
+        className="flex-1 min-w-[150px] bg-transparent text-sm text-zinc-200 outline-none placeholder:text-zinc-600 font-sans"
       />
     </div>
   );

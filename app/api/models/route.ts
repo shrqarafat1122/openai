@@ -91,7 +91,12 @@ export async function GET() {
               const body = await res.json();
               models = body.data || [];
             } else {
-              throw new Error(`Upstream status: ${res.status}`);
+              // If /models fails and no manualModels provided, show placeholder
+              // so the provider still appears in picker with a helpful message
+              console.warn(`[${provider.displayName}] /models returned ${res.status}. Add manual model IDs in provider settings.`);
+              models = [
+                { id: "CONFIG_REQUIRED", owned_by: provider.providerType },
+              ];
             }
           }
 
@@ -104,17 +109,23 @@ export async function GET() {
             });
           }
         } catch (err) {
-          console.warn(`Failed to fetch models for group: ${provider.displayName}`, err);
-          models = cacheData?.models || [];
+          console.warn(`Failed to fetch models for ${provider.displayName}:`, err);
+          // Use cached models if available, otherwise show placeholder
+          const cached = cacheData?.models;
+          models = cached && cached.length > 0
+            ? cached
+            : [{ id: "FETCH_ERROR", owned_by: provider.providerType }];
         }
       }
 
       return models.map((m: any) => ({
-        id: `${provider.id}/${m.id}`,
+        id: m.id === "CONFIG_REQUIRED" || m.id === "FETCH_ERROR"
+          ? `${provider.id}/${m.id}` // Keep special markers visible
+          : `${provider.id}/${m.id}`,
         object: "model",
         created: m.created || Date.now(),
         owned_by: m.owned_by || provider.providerType,
-        providerName: provider.displayName, // Extra helper for grouping picker in UI
+        providerName: provider.displayName,
       }));
     });
 

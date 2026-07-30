@@ -8,16 +8,37 @@ body {
 }
 
 body {
-  background: #0b0d10;
+  background: #07070B;
   color: #e6e9ee;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
 }
 
 /* Markdown code blocks in chat */
 .prose pre {
-  background: #0b0d10;
-  border: 1px solid #232a31;
+  background: #07070B;
+  border: 1px solid #27272a;
   border-radius: 8px;
   padding: 12px;
   overflow-x: auto;
@@ -25,4 +46,13 @@ body {
 .prose code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85em;
+}
+
+/* Glow effects */
+.shadow-glow-purple {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+.shadow-glow-blue {
+  box-shadow: 0 0 20px rgba(79, 124, 255, 0.2);
 }
