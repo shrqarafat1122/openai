@@ -49,25 +49,37 @@ export async function PATCH(
     }
 
     if (apiKeys !== undefined) {
-      if (!Array.isArray(apiKeys) || apiKeys.length === 0 || apiKeys.some((k) => !k.trim())) {
+      const isCustom = dbData?.providerType === "custom";
+      if (!Array.isArray(apiKeys) || (!isCustom && (apiKeys.length === 0 || apiKeys.some((k) => !k.trim())))) {
         return NextResponse.json({ error: "At least one valid API key is required" }, { status: 400 });
       }
 
       // Merge keys to preserve old plain text for masked keys sent by client
-      const existingKeys = dbData?.apiKeys || [];
+      const existingKeys: string[] = dbData?.apiKeys || [];
       const finalKeys = apiKeys.map((k: string, idx: number) => {
         const trimmed = k.trim();
         const isMask = trimmed.includes("••••") || trimmed === "••••••••";
         if (isMask) {
-          // If it matches a masked string, keep the database value (if exists at same index)
-          return existingKeys[idx] || trimmed;
+          // Find matching key from existingKeys by position or prefix/suffix
+          if (existingKeys[idx] && (existingKeys[idx].length <= 8 || (existingKeys[idx].startsWith(trimmed.slice(0, 4)) && existingKeys[idx].endsWith(trimmed.slice(-4))))) {
+            return existingKeys[idx];
+          }
+          const match = existingKeys.find((existing) => {
+            if (existing.length <= 8) return true;
+            return existing.startsWith(trimmed.slice(0, 4)) && existing.endsWith(trimmed.slice(-4));
+          });
+          return match || existingKeys[idx] || trimmed;
         }
         return trimmed;
       });
 
       updateData.apiKeys = finalKeys.filter((k) => k && !k.includes("••••"));
       if (updateData.apiKeys.length === 0) {
-        return NextResponse.json({ error: "At least one valid non-masked key is required" }, { status: 400 });
+        if (isCustom) {
+          updateData.apiKeys = ["not-needed"];
+        } else {
+          return NextResponse.json({ error: "At least one valid non-masked key is required" }, { status: 400 });
+        }
       }
     }
 
