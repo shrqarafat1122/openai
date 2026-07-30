@@ -13,6 +13,7 @@ interface ProviderRecord {
   baseUrl: string;
   apiKeys: string[];
   apiHeaders?: Record<string, string>;
+  manualModels?: string[];
   enabled: boolean;
   ownerUid: string;
 }
@@ -68,8 +69,16 @@ export async function GET() {
               { id: "claude-3-5-haiku-20241022", owned_by: "anthropic" },
               { id: "claude-3-opus-20240229", owned_by: "anthropic" },
             ];
+          } else if (provider.manualModels && provider.manualModels.length > 0) {
+            // Provider supplied an explicit model list — use it verbatim and
+            // skip the /models probe (many OpenAI-compatible backends only
+            // implement /chat/completions, not /models).
+            models = provider.manualModels.map((id: string) => ({
+              id,
+              owned_by: provider.providerType,
+            }));
           } else {
-            const baseUrl = provider.baseUrl || "https://api.openai.com/v1";
+            const baseUrl = (provider.baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
             const res = await fetch(`${baseUrl}/models`, {
               headers: {
                 Authorization: `Bearer ${provider.apiKeys[0]}`,
@@ -86,10 +95,14 @@ export async function GET() {
             }
           }
 
-          await cacheRef.set({
-            models,
-            fetchedAt: Date.now(),
-          });
+          // Only cache non-empty results so a transient failure doesn't pin an
+          // empty list for the full TTL.
+          if (models.length > 0) {
+            await cacheRef.set({
+              models,
+              fetchedAt: Date.now(),
+            });
+          }
         } catch (err) {
           console.warn(`Failed to fetch models for group: ${provider.displayName}`, err);
           models = cacheData?.models || [];

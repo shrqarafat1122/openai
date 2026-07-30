@@ -34,6 +34,7 @@ export async function GET() {
         baseUrl: data.baseUrl,
         apiKeys, // masked
         apiHeaders: data.apiHeaders || {},
+        manualModels: data.manualModels || [],
         enabled: !!data.enabled,
         createdAt: data.createdAt || 0,
       };
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { providerType, displayName, baseUrl, apiKeys, apiHeaders, enabled } = body;
+    const { providerType, displayName, baseUrl, apiKeys, apiHeaders, enabled, manualModels } = body;
 
     // Validation
     if (!providerType || !["openai", "anthropic", "custom"].includes(providerType)) {
@@ -77,6 +78,9 @@ export async function POST(req: Request) {
 
     const cleanBaseUrl = baseUrl ? baseUrl.trim() : "";
     const cleanKeys = apiKeys.map((k) => k.trim());
+    const cleanManualModels = Array.isArray(manualModels)
+      ? manualModels.map((m: unknown) => String(m).trim()).filter(Boolean)
+      : [];
 
     const docData = {
       ownerUid: session.uid,
@@ -85,6 +89,7 @@ export async function POST(req: Request) {
       baseUrl: cleanBaseUrl,
       apiKeys: cleanKeys,
       apiHeaders: apiHeaders || {},
+      manualModels: cleanManualModels,
       enabled: enabled !== false, // default true
       createdAt: Date.now(),
       updatedAt: Date.now(),

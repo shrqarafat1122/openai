@@ -13,6 +13,7 @@ interface ProviderRecord {
   baseUrl: string;
   apiKeys: string[];
   apiHeaders?: Record<string, string>;
+  manualModels?: string[];
   enabled: boolean;
   ownerUid: string;
 }
@@ -79,8 +80,15 @@ export async function GET(req: Request) {
               { id: "claude-3-5-haiku-20241022", owned_by: "anthropic" },
               { id: "claude-3-opus-20240229", owned_by: "anthropic" },
             ];
+          } else if (provider.manualModels && provider.manualModels.length > 0) {
+            // Explicit model list configured — use it and skip the /models
+            // probe (many OpenAI-compatible backends only expose /chat/completions).
+            models = provider.manualModels.map((id: string) => ({
+              id,
+              owned_by: provider.providerType,
+            }));
           } else {
-            const baseUrl = provider.baseUrl || "https://api.openai.com/v1";
+            const baseUrl = (provider.baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
             // Attempt to query upstream '/models' with first API key configurations
             const res = await fetch(`${baseUrl}/models`, {
               headers: {
@@ -98,11 +106,13 @@ export async function GET(req: Request) {
             }
           }
 
-          // Cache successfully fetched elements
-          await cacheRef.set({
-            models,
-            fetchedAt: Date.now(),
-          });
+          // Cache only non-empty results so a transient failure doesn't pin an empty list
+          if (models.length > 0) {
+            await cacheRef.set({
+              models,
+              fetchedAt: Date.now(),
+            });
+          }
         } catch (err) {
           console.warn(`Failed to fetch models for provider ${provider.displayName}:`, err);
           // Fall back to stale cached items if query failed

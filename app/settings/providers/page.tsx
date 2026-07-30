@@ -12,6 +12,7 @@ interface ProviderRecord {
   baseUrl: string;
   apiKeys: string[];
   apiHeaders: Record<string, string>;
+  manualModels?: string[];
   enabled: boolean;
   createdAt: number;
 }
@@ -27,6 +28,7 @@ export default function ProvidersPage() {
   const [providerType, setProviderType] = useState<"openai" | "anthropic" | "custom">("openai");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKeys, setApiKeys] = useState<string[]>([]);
+  const [manualModels, setManualModels] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -64,6 +66,7 @@ export default function ProvidersPage() {
       baseUrl: providerType === "custom" ? baseUrl.trim() : (providerType === "anthropic" ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
       apiKeys,
       apiHeaders: {},
+      manualModels: providerType === "custom" ? manualModels : [],
       enabled: true,
     };
 
@@ -91,6 +94,7 @@ export default function ProvidersPage() {
       setDisplayName("");
       setBaseUrl("");
       setApiKeys([]);
+      setManualModels([]);
       setEditId(null);
       setShowForm(false);
       await load();
@@ -134,6 +138,7 @@ export default function ProvidersPage() {
     setProviderType(item.providerType);
     setBaseUrl(item.baseUrl);
     setApiKeys(item.apiKeys);
+    setManualModels(item.manualModels ?? []);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -166,6 +171,7 @@ export default function ProvidersPage() {
                   setDisplayName("");
                   setBaseUrl("");
                   setApiKeys([]);
+                  setManualModels([]);
                 }
               }}
               className="rounded-lg bg-gradient-to-r from-violet-600 to-indigo-650 px-3.5 py-2 text-xs font-medium text-white hover:opacity-90 transition-all flex items-center gap-1 shadow-glow-purple"
@@ -241,6 +247,19 @@ export default function ProvidersPage() {
                     placeholder="e.g. https://api.deepseek.com/v1, http://127.0.0.1:11434/v1"
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950/80 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-violet-500 transition-all font-mono"
                   />
+                  <div className="mt-4">
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-300">
+                      Manual Model IDs <span className="text-zinc-500 font-normal">(optional — set when the endpoint has no /models)</span>
+                    </label>
+                    <KeyTagInput
+                      value={manualModels}
+                      onChange={setManualModels}
+                      placeholder="e.g. deepseek-chat, deepseek-reasoner..."
+                    />
+                    <p className="mt-1.5 text-[11px] text-zinc-500 leading-normal">
+                      Leave empty to auto-discover from <span className="font-mono text-zinc-400">GET /models</span>. Add IDs here for OpenAI-compatible backends that only implement <span className="font-mono text-zinc-400">/chat/completions</span>.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -265,6 +284,7 @@ export default function ProvidersPage() {
                   setDisplayName("");
                   setBaseUrl("");
                   setApiKeys([]);
+                  setManualModels([]);
                 }}
                 className="rounded-lg border border-zinc-800 bg-transparent px-4 py-2 text-xs font-medium hover:bg-zinc-900 transition-all"
               >

@@ -31,7 +31,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { displayName, baseUrl, apiKeys, apiHeaders, enabled } = body;
+    const { displayName, baseUrl, apiKeys, apiHeaders, enabled, manualModels } = body;
 
     const updateData: Record<string, any> = {
       updatedAt: Date.now(),
@@ -77,6 +77,12 @@ export async function PATCH(
 
     if (enabled !== undefined) {
       updateData.enabled = !!enabled;
+    }
+
+    if (manualModels !== undefined) {
+      updateData.manualModels = Array.isArray(manualModels)
+        ? manualModels.map((m: unknown) => String(m).trim()).filter(Boolean)
+        : [];
     }
 
     await docRef.update(updateData);
