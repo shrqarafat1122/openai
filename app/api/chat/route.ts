@@ -45,6 +45,18 @@ export async function POST(req: Request) {
     params.apiHeaders = routeDetails.apiHeaders;
 
     const provider = routeDetails.provider;
+
+    // Diagnostic (no secrets): what are we actually about to call?
+    const firstKey = routeDetails.apiKeys?.[0] ?? "";
+    console.log("[chat] routing", {
+      requestedModel: body.model,
+      upstreamModel: routeDetails.upstreamModel,
+      providerId: provider.id,
+      baseUrl: routeDetails.baseUrl,
+      keyCount: routeDetails.apiKeys?.length ?? 0,
+      keyPreview: firstKey ? `${firstKey.slice(0, 3)}…${firstKey.slice(-4)} (len ${firstKey.length})` : "<none>",
+    });
+
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream<Uint8Array>({
@@ -55,6 +67,13 @@ export async function POST(req: Request) {
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } catch (err) {
+          const anyErr = err as { status?: number; message?: string };
+          console.error("[chat] upstream stream error", {
+            providerId: provider.id,
+            baseUrl: routeDetails.baseUrl,
+            status: anyErr?.status,
+            message: anyErr?.message,
+          });
           const message = err instanceof Error ? err.message : "Upstream stream error";
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ error: { message } })}\n\n`)
