@@ -58,25 +58,33 @@ export async function PATCH(
       const existingKeys: string[] = dbData?.apiKeys || [];
       const finalKeys = apiKeys.map((k: string, idx: number) => {
         const trimmed = k.trim();
-        const isMask = trimmed.includes("••••") || trimmed === "••••••••";
-        if (isMask) {
-          // Find matching key from existingKeys by position or prefix/suffix
-          if (existingKeys[idx] && (existingKeys[idx].length <= 8 || (existingKeys[idx].startsWith(trimmed.slice(0, 4)) && existingKeys[idx].endsWith(trimmed.slice(-4))))) {
-            return existingKeys[idx];
-          }
-          const match = existingKeys.find((existing) => {
-            if (existing.length <= 8) return true;
-            return existing.startsWith(trimmed.slice(0, 4)) && existing.endsWith(trimmed.slice(-4));
-          });
-          return match || existingKeys[idx] || trimmed;
+        const isMask = trimmed.includes("••••");
+        if (!isMask) return trimmed; // Fresh unmasked key provided
+
+        // 1. Check exact index match first
+        if (existingKeys[idx]) {
+          return existingKeys[idx];
         }
-        return trimmed;
+        // 2. Fallback to prefix/suffix matching
+        const match = existingKeys.find((existing) => {
+          if (trimmed === "••••••••") return true;
+          const prefix = trimmed.slice(0, 4).replace(/•/g, "");
+          const suffix = trimmed.slice(-4).replace(/•/g, "");
+          return existing.startsWith(prefix) && existing.endsWith(suffix);
+        });
+        return match || existingKeys[0] || trimmed;
       });
 
-      updateData.apiKeys = finalKeys.filter((k) => k && !k.includes("••••"));
+      // Ensure no masked placeholders are written back to Firestore
+      updateData.apiKeys = finalKeys
+        .map((k, idx) => (k.includes("••••") ? existingKeys[idx] || existingKeys[0] || "" : k))
+        .filter(Boolean);
+
       if (updateData.apiKeys.length === 0) {
         if (isCustom) {
-          updateData.apiKeys = ["not-needed"];
+          updateData.apiKeys = existingKeys.length > 0 ? existingKeys : ["not-needed"];
+        } else if (existingKeys.length > 0) {
+          updateData.apiKeys = existingKeys;
         } else {
           return NextResponse.json({ error: "At least one valid non-masked key is required" }, { status: 400 });
         }

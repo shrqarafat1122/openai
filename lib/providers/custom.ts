@@ -12,12 +12,18 @@ export const customProvider: Provider = {
 
     return withKeyRotation(
       keys,
-      (key) =>
-        new OpenAI({
-          apiKey: key,
+      (key) => {
+        const isDummyKey = key === "not-needed" || !key;
+        const headers: Record<string, string> = { ...(params.apiHeaders || {}) };
+        if (isDummyKey) {
+          headers["Authorization"] = "";
+        }
+        return new OpenAI({
+          apiKey: isDummyKey ? "dummy-key" : key,
           baseURL,
-          defaultHeaders: params.apiHeaders,
-        }),
+          defaultHeaders: headers,
+        });
+      },
       (client) =>
         client.chat.completions.create({
           model: params.model,
@@ -37,12 +43,18 @@ export const customProvider: Provider = {
 
     const stream = await withKeyRotation(
       keys,
-      (key) =>
-        new OpenAI({
-          apiKey: key,
+      (key) => {
+        const isDummyKey = key === "not-needed" || !key;
+        const headers: Record<string, string> = { ...(params.apiHeaders || {}) };
+        if (isDummyKey) {
+          headers["Authorization"] = "";
+        }
+        return new OpenAI({
+          apiKey: isDummyKey ? "dummy-key" : key,
           baseURL,
-          defaultHeaders: params.apiHeaders,
-        }),
+          defaultHeaders: headers,
+        });
+      },
       (client) =>
         client.chat.completions.create({
           model: params.model,
